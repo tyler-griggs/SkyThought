@@ -46,7 +46,9 @@ class TaskHandler:
 class MathTaskHandler(TaskHandler):
     @staticmethod
     def generate_prompt(prompt):
-        return prompt + "\nReturn your final response within \\boxed{{}}" 
+        return prompt
+        # return "Return your final response within \\boxed{{}}\n" + prompt
+        # return prompt + "\nReturn your final response within \\boxed{{}}" 
     
     def check_correctness(self, problem, generation):
         answer = problem["answer"]

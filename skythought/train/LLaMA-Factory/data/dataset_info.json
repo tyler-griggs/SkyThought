@@ -633,6 +633,36 @@
     },
     "folder": "python"
   },
+  "Sky-T1-simpo-fcs_trim": {
+    "file_name": "sky_simpo_fcs_trim.json",
+    "ranking": true,
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
+  "Sky-T1-simpo-fcs_reflection_trim": {
+    "file_name": "sky_simpo_fcs_reflection_trim.json",
+    "ranking": true,
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
+  "Sky-T1-simpo-trim": {
+    "file_name": "sky_simpo_trim.json",
+    "ranking": true,
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
   "Sky-T1": {
     "file_name": "your data path here",
     "formatting": "sharegpt",

@@ -1,6 +1,5 @@
 import json
 import argparse
-import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from vllm import LLM, SamplingParams
 from tqdm import tqdm
@@ -199,7 +198,101 @@ def perform_check(handler: TaskHandler, temperatures, result_file, args):
 
     with open(result_file, 'w', encoding='utf-8') as file:
         json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+
+def perform_modified_inference_and_save(temperatures, max_tokens, result_file, llm, system_prompt, args):
+    # results = handler.load_existing_results(result_file)
+    results = {}
+    # print(f"Loaded {len(results)} existing results.")
+    # train_data = handler.load_and_filter_dataset(args.start, args.end, split=args.split, source=args.source, filter_difficulty=args.filter_difficulty)
+    # remaining_data = handler.process_remaining_data(train_data, results)
+    dataset_path = 'data/Sky-T1_math_5k.json'
+    dataset = {}
+    with open(dataset_path, 'r', encoding='utf-8') as file:
+        dataset = json.load(file)
+
+    conversations = []
+    for problem in dataset:
+        prompt = problem["conversations"][0]["value"]
+        prompt_text = prompt + "\nReturn your final response within \\boxed{{}}" 
+        conversations.append([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt_text}
+        ])
+
+    for temp in temperatures:
+        if args.model.startswith("openai"):
+            fetch_partial = partial(fetch_response_openai, llm, args.model, max_tokens, temp)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
+                responses = list(e.map(fetch_partial, conversations))
+
+        else:
+            sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temp)
+            responses = llm.chat(messages=conversations, sampling_params=sampling_params, use_tqdm=True)
+
+        for idx, response in enumerate(responses):
+            response_entry = {
+                "content": response.choices[0].message.content.strip() if args.model.startswith("openai") else response.outputs[0].text.strip(),
+                "correctness": None,
+                "reason": None,
+            }
+            problem_key = dataset[idx]["conversations"][0]["value"]
+            if problem_key not in results:
+                # results[problem_key] = remaining_data[idx]
+                results[problem_key] = {}
+                results[problem_key]["problem"] = dataset[idx]["conversations"][0]["value"]
+                results[problem_key]["responses"] = {}
+                results[problem_key]["token_usages"] = {}
+                prompt = conversations[idx][1]["content"]
+                results[problem_key]["prompt"] = prompt
+
+            results[problem_key]["responses"][str(temp)] = response_entry
+            
+            if args.model.startswith("openai"):
+                results[problem_key]["token_usages"][str(temp)] = {
+                    "completion_tokens": response.usage.completion_tokens,
+                    "prompt_tokens": response.usage.prompt_tokens,
+                }
+            else:
+                results[problem_key]["token_usages"][str(temp)] = {
+                    "completion_tokens": len(response.outputs[0].token_ids),
+                    "prompt_tokens": len(response.prompt_token_ids)
+                }
+
+    completion_tokens = [
+        results[key].get("token_usages", {}).get(str(temp), {}).get("completion_tokens", 0)
+        for key in results for temp in temperatures
+    ]
+    prompt_tokens = [
+        results[key].get("token_usages", {}).get(str(temp), {}).get("prompt_tokens", 0)
+        for key in results for temp in temperatures
+    ]
+
+    # Token usage summary put into another subdirectory
+    result_dir, result_name = os.path.split(result_file)
+    token_usage_dir = os.path.join(result_dir, "token_usage")
+    os.makedirs(token_usage_dir, exist_ok=True)
+
+    # Construct the token usage result file path
+    token_usage_result_file = os.path.join(token_usage_dir, result_name)
+
+    # Prepare the token usage dictionary
+    token_dict = {
+        "completion_tokens": sum(completion_tokens),
+        "prompt_tokens": sum(prompt_tokens),
+        "avg_completion_tokens": round(sum(completion_tokens) / len(completion_tokens), 3) if completion_tokens else 0,
+        "avg_prompt_tokens": round(sum(prompt_tokens) / len(prompt_tokens), 3) if prompt_tokens else 0,
+    }
+
+    # Save the token usage dictionary to the result file
+    with open(token_usage_result_file, "w") as f:
+        json.dump(token_dict, f, indent=4)
+
+    print(f"Token usage saved to {token_usage_result_file}")
     
+    with open(result_file, 'w', encoding='utf-8') as file:
+        json.dump(results, file, ensure_ascii=False, indent=4, cls=NumpyEncoder)
+
 
 def perform_inference_and_save(handler: TaskHandler, temperatures, max_tokens, result_file, llm, system_prompt, args):
     results = handler.load_existing_results(result_file)
@@ -284,10 +377,10 @@ def perform_inference_and_save(handler: TaskHandler, temperatures, max_tokens, r
 
 def main():
     parser = argparse.ArgumentParser(description="Unified inference and checking for different datasets/tasks.")
-    parser.add_argument("--dataset", type=str, required=True, choices=["NUMINA", "APPS", "TACO", "MATH500", "AIME", "GPQADiamond", "MMLU", "LiveCodeBench"], help="Dataset to process.")
+    parser.add_argument("--dataset", type=str, required=True, choices=["NUMINA", "APPS", "TACO", "MATH500", "AIME", "GPQADiamond", "MMLU", "LiveCodeBench", "Custom"], help="Dataset to process.")
     parser.add_argument("--model", type=str, required=True, default="Qwen/QwQ-32B-Preview", help="The model to run.")
     parser.add_argument("--tp", type=int, default=8, help="Tensor Parallelism Degree")
-    parser.add_argument("--max_tokens", type=int, default=32768, help="Max tokens for the model.")
+    parser.add_argument("--max_tokens", type=int, default=4096, help="Max tokens for the model.")
     parser.add_argument("--split", type=str, default="train", help="Split to use for apps (e.g., train, test).")
     parser.add_argument("--source", type=str, help="Source for the dataset.")
     parser.add_argument("--start", type=int, default=0, help="Start index.")
@@ -307,6 +400,11 @@ def main():
     if args.result_dir and not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
     result_file = os.path.join(args.result_dir, f"{MODEL_TO_NAME[args.model]}_{args.dataset}_{args.split}_{args.source}_{args.start}_{args.end}.json")
+
+    # llm = LLM(model=args.model, tensor_parallel_size=args.tp)
+    # system_prompt = SYSTEM_PROMPT[args.model]
+    # perform_modified_inference_and_save(temperatures, max_tokens, result_file, llm, system_prompt, args)
+    # return
 
     if args.check:
         # check if converted file exists
