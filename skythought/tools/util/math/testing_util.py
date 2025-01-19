@@ -2,6 +2,8 @@
 The logic in this file largely borrows from Qwen2.5-Math codebase at https://github.com/QwenLM/Qwen2.5-Math:
 """
 
+import concurrent.futures
+import time
 import re
 import regex
 from word2number import w2n
@@ -536,6 +538,19 @@ def math_equal(
 
     return False
 
+def math_equal_with_timeout(
+    prediction,
+    reference,
+    include_percentage: bool = True,
+    is_close: bool = True,
+) -> bool:
+    timeout = 5
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(math_equal, prediction, reference, include_percentage, is_close)
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            return False
 
 def numeric_equal(prediction: float, reference: float):
     return isclose(reference, prediction, rel_tol=1e-4)

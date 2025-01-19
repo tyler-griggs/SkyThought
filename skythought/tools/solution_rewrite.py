@@ -6,7 +6,6 @@ from tqdm import tqdm
 from util.model_utils import *
 
 
-
 # TODO
   # DONE First run answer_extractor
   # DONE Then make a scoring run
@@ -354,61 +353,58 @@ ANSWER_EXTRACTION_PROMPT = """
 
 def main():
   parser = argparse.ArgumentParser(description="Tool to rewrite generated solutions for high-quality data generation.")
-  parser.add_argument("--model", type=str, required=True, default="Qwen/QwQ-32B-Preview", help="The model to run.")
+  parser.add_argument("--model", type=str, required=True, default="meta-llama/Llama-3.3-70B-Instruct", help="The model to run.")
   parser.add_argument("--tp", type=int, default=8, help="Tensor Parallelism Degree")
   parser.add_argument("--max_tokens", type=int, default=32768, help="Max tokens for the model.")
   args = parser.parse_args()
 
-  filepath_root = "data/math5k/sky-t1-math5k"
+  filepath_root = "data/prm12k/sky-prm12k"
 
   # Initialize model
-  # llm = LLM(model=args.model, tensor_parallel_size=args.tp)
-  # sampling_params = SamplingParams(max_tokens=args.max_tokens)
+  llm = LLM(model=args.model, tensor_parallel_size=args.tp)
+  sampling_params = SamplingParams(max_tokens=args.max_tokens)
 
   # Load dataset to process
-  # dataset_filepath = filepath_root + "-original-answers.json"
-  # dataset = load_dataset(dataset_filepath)
+  dataset_filepath = filepath_root + "-original-answers.json"
+  dataset = load_dataset(dataset_filepath)
 
-  # # Score full response
-  # scored_filepath = filepath_root + "-scored-solutions.json"
-  # scored_dataset = simple_score_solutions(dataset, scored_filepath)
+  # Score full response
+  scored_filepath = filepath_root + "-scored-solutions.json"
+  scored_dataset = simple_score_solutions(dataset, scored_filepath)
 
-  # # Filter for shortest and longest correct solutions
-  # filtered_filepath = filepath_root + "-filtered-solutions.json"
-  # filtered_dataset = filter_solutions(scored_dataset, filtered_filepath)
+  # Filter for shortest and longest correct solutions
+  filtered_filepath = filepath_root + "-filtered-solutions.json"
+  filtered_dataset = filter_solutions(scored_dataset, filtered_filepath)
 
-  # # Split short solution into subsolutions
-  # conversations = make_splitting_conversations(filtered_dataset, SUBPROBLEM_SPLIT_PROMPT)
-  # responses = llm.chat(messages=conversations, sampling_params=sampling_params, use_tqdm=True)
-  # subsolutions = split_solutions(responses)
-  # subsolution_filepath = filepath_root + "-subsolutions.json"
-  # split_dataset = add_split_to_dataset(filtered_dataset, subsolutions, subsolution_filepath)
+  # Split short solution into subsolutions
+  conversations = make_splitting_conversations(filtered_dataset, SUBPROBLEM_SPLIT_PROMPT)
+  responses = llm.chat(messages=conversations, sampling_params=sampling_params, use_tqdm=True)
+  subsolutions = split_solutions(responses)
+  subsolution_filepath = filepath_root + "-subsolutions.json"
+  split_dataset = add_split_to_dataset(filtered_dataset, subsolutions, subsolution_filepath)
 
-  # # Score subsolutions
-  # subscoring_conversations = make_subscoring_conversations(split_dataset, ANSWER_EXTRACTION_PROMPT)
-  # responses = llm.chat(messages=subscoring_conversations, sampling_params=sampling_params, use_tqdm=True)
-  # scored_subsolution_filepath = filepath_root + "-scored-subsolutions.json"
-  # scored_dataset = score_subsolutions(split_dataset, responses, scored_subsolution_filepath)
+  # Score subsolutions
+  subscoring_conversations = make_subscoring_conversations(split_dataset, ANSWER_EXTRACTION_PROMPT)
+  responses = llm.chat(messages=subscoring_conversations, sampling_params=sampling_params, use_tqdm=True)
+  scored_subsolution_filepath = filepath_root + "-scored-subsolutions.json"
+  scored_dataset = score_subsolutions(split_dataset, responses, scored_subsolution_filepath)
 
+  # Create solution variants: FCS, FCS+Reflection, Trim-only
+  variants_filepath = filepath_root + "-solution-variants.json"
+  variants_dataset = build_solution_variants(scored_dataset, variants_filepath)
 
-  # # Create solution variants: FCS, FCS+Reflection, Trim-only
-  # variants_filepath = filepath_root + "-solution-variants.json"
-  # variants_dataset = build_solution_variants(scored_dataset, variants_filepath)
+  final_filepath = filepath_root + "-final.json"
+  final_dataset = compute_token_usages(variants_dataset, llm, final_filepath)
 
-  # final_filepath = filepath_root + "-final.json"
-  # final_dataset = compute_token_usages(variants_dataset, llm, final_filepath)
-
-  # # final_dataset = load_dataset(filepath_root + "-final.json")
-
-  # simpo_filepath = filepath_root + "-simpo-fcs_trim.json"
-  # format_to_simpo(final_dataset, "fcs_trim", simpo_filepath)
-  # simpo_filepath = filepath_root + "-simpo-fcs_reflection_trim.json"
-  # format_to_simpo(final_dataset, "fcs_reflection_trim", simpo_filepath)
+  simpo_filepath = filepath_root + "-simpo-fcs_trim.json"
+  format_to_simpo(final_dataset, "fcs_trim", simpo_filepath)
+  simpo_filepath = filepath_root + "-simpo-fcs_reflection_trim.json"
+  format_to_simpo(final_dataset, "fcs_reflection_trim", simpo_filepath)
   # simpo_filepath = filepath_root + "-simpo-trim.json"
   # format_to_simpo(final_dataset, "trim", simpo_filepath)
 
-  simpo_dataset = load_dataset(filepath_root + "-simpo-fcs_reflection_trim.json")
-  print(len(simpo_dataset))
+  # simpo_dataset = load_dataset(filepath_root + "-simpo-fcs_reflection_trim.json")
+  # print(len(simpo_dataset))
 
 
 if __name__ == "__main__":

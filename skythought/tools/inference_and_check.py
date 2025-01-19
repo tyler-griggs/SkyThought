@@ -9,6 +9,9 @@ from openai import OpenAI
 import concurrent.futures
 from functools import partial
 
+# Example:
+# python inference_and_check.py --dataset Custom --model NovaSky-AI/Sky-T1-32B-Preview --tp 8 --result-dir /shared/tgriggs/results --temperatures 1.0 1.001 1.002 1.003 1.004 1.005 1.006 1.007 1.008 1.009
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -205,30 +208,28 @@ def perform_modified_inference_and_save(temperatures, max_tokens, result_file, l
     # print(f"Loaded {len(results)} existing results.")
     # train_data = handler.load_and_filter_dataset(args.start, args.end, split=args.split, source=args.source, filter_difficulty=args.filter_difficulty)
     # remaining_data = handler.process_remaining_data(train_data, results)
-    dataset_path = 'data/Sky-T1_math_5k.json'
+    dataset_path = '/shared/tgriggs/data/prm12k.json'
     dataset = {}
     with open(dataset_path, 'r', encoding='utf-8') as file:
         dataset = json.load(file)
 
     conversations = []
-    for problem in dataset:
-        prompt = problem["conversations"][0]["value"]
-        prompt_text = prompt + "\nReturn your final response within \\boxed{{}}" 
+    for prompt in dataset:
+        question = dataset[prompt]['question']
+        prompt_text = "Return your final response within \\boxed{{}}. " + question
         conversations.append([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt_text}
         ])
 
     for temp in temperatures:
-        if args.model.startswith("openai"):
-            fetch_partial = partial(fetch_response_openai, llm, args.model, max_tokens, temp)
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
-                responses = list(e.map(fetch_partial, conversations))
-
-        else:
-            sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temp)
-            responses = llm.chat(messages=conversations, sampling_params=sampling_params, use_tqdm=True)
+        # if args.model.startswith("openai"):
+        #     fetch_partial = partial(fetch_response_openai, llm, args.model, max_tokens, temp)
+        #     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
+        #         responses = list(e.map(fetch_partial, conversations))
+        # else:
+        sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temp)
+        responses = llm.chat(messages=conversations, sampling_params=sampling_params, use_tqdm=True)
 
         for idx, response in enumerate(responses):
             response_entry = {
@@ -236,15 +237,16 @@ def perform_modified_inference_and_save(temperatures, max_tokens, result_file, l
                 "correctness": None,
                 "reason": None,
             }
-            problem_key = dataset[idx]["conversations"][0]["value"]
+            problem_key = list(dataset.keys())[idx]
             if problem_key not in results:
                 # results[problem_key] = remaining_data[idx]
                 results[problem_key] = {}
-                results[problem_key]["problem"] = dataset[idx]["conversations"][0]["value"]
+                results[problem_key]["problem"] = list(dataset.keys())[idx]
                 results[problem_key]["responses"] = {}
                 results[problem_key]["token_usages"] = {}
                 prompt = conversations[idx][1]["content"]
                 results[problem_key]["prompt"] = prompt
+                results[problem_key]["answer"] = dataset[list(dataset.keys())[idx]]['answer']
 
             results[problem_key]["responses"][str(temp)] = response_entry
             

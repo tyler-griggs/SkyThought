@@ -1,19 +1,16 @@
 ### model
 model_name_or_path: NovaSky-AI/Sky-T1-32B-Preview
 
-# TODO: New dataset --> change 'dataset', 'output_dir', 'run_name'
-
 ### method
 stage: dpo
 do_train: true
 finetuning_type: full
-deepspeed: examples/deepspeed/ds_z3_offload_config.json  # choices: [ds_z0_config.json, ds_z2_config.json, ds_z3_config.json]
-pref_beta: 2.0
-simpo_gamma: 0.3
-pref_loss: simpo
+deepspeed: examples/deepspeed/ds_z3_offload_config.json
+pref_beta: 0.1
+pref_loss: sigmoid
 
 ### dataset
-dataset: Sky-T1-prm12k-simpo-fcs_reflection_trim
+dataset: Sky-T1-simpo-fcs_reflection_trim
 template: qwen25
 cutoff_len: 8192
 max_samples: 10000
@@ -21,21 +18,25 @@ overwrite_cache: true
 preprocessing_num_workers: 16
 
 ### output
-output_dir: saves/Sky-T1-32B-Preview/full/prm12k-fcs-reflection-lr5e7-gamma03
+output_dir: saves/Sky-T1-32B-Preview/full/dpo-fcs-reflection
 logging_steps: 1
 save_steps: 100
 plot_loss: true
 
 ### train
 per_device_train_batch_size: 1
-gradient_accumulation_steps: 12
+gradient_accumulation_steps: 3
 learning_rate: 5.0e-7
 num_train_epochs: 1.0
 lr_scheduler_type: cosine
 warmup_ratio: 0.1
-bf16: true
+# bf16: true
 ddp_timeout: 180000000
 
+### memory reduction
+# enable_liger_kernel: true
+# use_unsloth_gc: true
+
 report_to: wandb
-run_name: Sky-T1-prm12k-fcs-reflection
+run_name: Sky-T1-dpo-fcs-reflection
 
