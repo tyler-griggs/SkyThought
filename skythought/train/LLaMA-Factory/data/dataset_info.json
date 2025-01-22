@@ -653,6 +653,56 @@
       "rejected": "rejected"
     }
   },
+  "Sky-T1-prm12k-simpo-fcs_reflection_trim": {
+    "file_name": "sky_prm12k_simpo_fcs_reflection_trim.json",
+    "ranking": true,
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
+  "Sky-T1-prm12k-simpo-mixed_fcs_reflection": {
+    "file_name": "sky_simpo_prm12k_mixed_fcs_reflection.json",
+    "ranking": true,
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
+  "Sky-T1-prm12k-taco1k-SI-fcs-reflection": {
+    "file_name": "sky-prm12k-taco1k-SI-conversations.json",
+    "ranking": true,
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
+  "Sky-T1-prm12k-taco1k-fcs-reflection": {
+    "file_name": "sky-prm12k-taco1k-conversations.json",
+    "ranking": true,
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
+  "Sky-T1-prm12k-mixed-SI450-FCSR": {
+    "file_name": "sky-prm12k-mixed-SI450-conversations.json",
+    "ranking": true,
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
   "Sky-T1-simpo-trim": {
     "file_name": "sky_simpo_trim.json",
     "ranking": true,

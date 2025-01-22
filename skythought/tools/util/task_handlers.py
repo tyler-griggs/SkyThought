@@ -10,7 +10,7 @@ from typing import Dict, Any
 from multiprocessing import Manager
 from .apps.testing_util import run_test as apps_run_test
 from .taco.testing_util import run_test as taco_run_test
-from .math.testing_util import strip_answer_string, get_multiple_choice_answer, extract_answer, math_equal, mmlu_pro_extract_answer
+from .math.testing_util import strip_answer_string, get_multiple_choice_answer, extract_answer, math_equal, math_equal_with_timeout, mmlu_pro_extract_answer
 from .livecodebench.testing_util import unsafe_lcb_runTests, map_to_example, has_test_type, post_process_code, translate_private_test_cases
 from .common import TimeoutException, timeout
 from util.model_utils import *
@@ -55,11 +55,13 @@ class MathTaskHandler(TaskHandler):
         return "Return your final response within \\boxed{{}}. " + prompt
     
     def check_correctness(self, problem, generation):
-        answer = strip_answer_string(problem["answer"])
-        pred = extract_answer(generation)
-        # print(problem)
-        pred = strip_answer_string(pred)
-        return math_equal(pred, answer)
+        try:
+            answer = strip_answer_string(problem["answer"])
+            pred = extract_answer(generation)
+            pred = strip_answer_string(pred)
+            return math_equal_with_timeout(pred, answer)
+        except:
+            return False
     
     def update_results(self, problem, response):
         if not isinstance(response, str):
@@ -322,7 +324,7 @@ class NUMINATaskHandler(TaskHandler):
         solution = strip_answer_string(solution)
         pred = extract_answer(generation)
         pred = strip_answer_string(pred)
-        return math_equal(pred, solution)
+        return math_equal_with_timeout(pred, solution)
     
     def update_results(self, problem, response):
         if not isinstance(response, str):
@@ -483,7 +485,8 @@ class TACOTaskHandler(TaskHandler):
 
     @staticmethod
     def generate_prompt(prompt, starter_code=None, fn_name=None):
-        _input = "\nQUESTION:\n"
+        # TODO(tgriggs): change after testing
+        _input = "Generate an executable Python function generated from the given prompt\nQUESTION:\n"
         _input += prompt
         if starter_code:
             _input += starter_code
@@ -560,6 +563,8 @@ class TACOTaskHandler(TaskHandler):
     def load_and_filter_dataset(self, start, end, split="train", source=None, filter_difficulty=False, args=None):
         dataset = load_dataset("BAAI/TACO", "ALL", trust_remote_code=True)
         train_data = dataset[split].to_pandas()
+        # TODO(tgriggs): remove after testing
+        train_data = train_data.sample(n=5, random_state=42)  # Randomly sample 5000 rows
         if not filter_difficulty:
             return train_data.iloc[start:end] if end > 0 else train_data.iloc[start:]
         return train_data.query('difficulty == @source').iloc[start:end] if end > 0 else train_data.query('difficulty == @source').iloc[start:]

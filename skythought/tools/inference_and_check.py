@@ -403,7 +403,7 @@ def main():
     parser.add_argument("--dataset", type=str, required=True, choices=["NUMINA", "APPS", "TACO", "MATH500", "AIME", "GPQADiamond", "MMLU", "MMLUPro", "LiveCodeBench", "GSM8K", "ARC-C", "Custom"], help="Dataset to process.")
     parser.add_argument("--model", type=str, required=True, default="Qwen/QwQ-32B-Preview", help="The model to run.")
     parser.add_argument("--tp", type=int, default=8, help="Tensor Parallelism Degree")
-    parser.add_argument("--max_tokens", type=int, default=4096, help="Max tokens for the model.")
+    parser.add_argument("--max_tokens", type=int, default=32768, help="Max tokens for the model.")
     parser.add_argument("--split", type=str, default="train", help="Split to use for apps (e.g., train, test).")
     parser.add_argument("--source", type=str, help="Source for the dataset.")
     parser.add_argument("--start", type=int, default=0, help="Start index.")

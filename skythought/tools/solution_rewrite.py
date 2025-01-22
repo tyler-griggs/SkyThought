@@ -11,11 +11,6 @@ from util.model_utils import *
   # DONE Then make a scoring run
   # DONE Then run full filtering run
   # DONE Then run real quick_eval on 'shortest' generation to confirm it's actually correct
-
-  # Work on code to actually use our eval code instead of llama-based extraction --> this is important!!
-    # Run our own eval pipeline to confirm the full-answer scores are the same
-    # This is the reject sampling set -- it should be able to answer true on all of them!
-
   # Change FCS and FCS+Reflection code to not include "False" sections if they don't lead to an answer?
 
 # TODO
@@ -273,7 +268,7 @@ def format_to_simpo(final_dataset, format, outfile):
       },
       {
         "from": "human",
-        "value": prompt + "\nReturn your final response within \\boxed{{}}" 
+        "value": "Return your final response within \\boxed{{}}" + prompt
       }
     ]
     simpo["chosen"] = {
@@ -358,7 +353,7 @@ def main():
   parser.add_argument("--max_tokens", type=int, default=32768, help="Max tokens for the model.")
   args = parser.parse_args()
 
-  filepath_root = "data/prm12k/sky-prm12k"
+  filepath_root = "data/math5k/sky-t1-math5k"
 
   # Initialize model
   llm = LLM(model=args.model, tensor_parallel_size=args.tp)
